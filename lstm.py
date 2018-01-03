@@ -37,14 +37,14 @@ tf_input = 0
 tf_target = 0
 #--------------------------------------------------
 (data, data_ner, word_embedding) = util.loadChineseData()
-(batch_size, train_set, train_lb, test_set, test_lb) = util.DivideDataSet(data, data_ner)
+(batch_size, max_sequence_num, train_set, train_lb, test_set, test_lb) = util.DivideDataSet(data, data_ner)
 word_embedding.insert(0, [0 for i in range(len(word_embedding[0]))])
 word_embedding_size = len(word_embedding )
 word_embedding_dim = len(word_embedding[0])
 
 #def mynet ():
-tf_input = tf.placeholder(dtype=tf.int32, shape=[batch_size, max_sequence_length])
-tf_target = tf.placeholder(dtype=tf.int32, shape=[batch_size, max_sequence_length])
+tf_input = tf.placeholder(dtype=tf.int32, shape=[max_sequence_num, max_sequence_length])
+tf_target = tf.placeholder(dtype=tf.int32, shape=[max_sequence_num, max_sequence_length])
 print('fuck')
 #class_output = tf.nn.embedding_lookup(np.eye(5,5), tf_target)
 map_nertype = [[0 if j != i else 1 for j in range(5)] for i in range(5)]
@@ -62,8 +62,8 @@ cell_bk = tf.nn.rnn_cell.BasicLSTMCell(hidden_size, forget_bias=forget_bias, sta
 #cell_bk = tf.nn.rnn_cell.MultiRNNCell([cell_bk]*num_layers, state_is_tuple=True)
 
 
-initial_state_fw = cell_fw.zero_state(batch_size, dtype=tf.float64)
-initial_state_bk = cell_bk.zero_state(batch_size, dtype=tf.float64)
+initial_state_fw = cell_fw.zero_state(max_sequence_num, dtype=tf.float64)
+initial_state_bk = cell_bk.zero_state(max_sequence_num, dtype=tf.float64)
 #inputs_list = [tf.squeeze(s, squeeze_dims=1) for s in tf.split(cell_input, num_or_size_splits=max_sequence_length, axis=1)]  
 tf_tmp = 0
 s = tf.split(cell_input, num_or_size_splits=max_sequence_length, axis=1)
@@ -72,7 +72,7 @@ for i in range(len(s)):
 		tf_tmp = s[i]
 	else:
 		tf_tmp = tf.concat([tf_tmp, s[i]], 0)
-inputs_list = tf.reshape(tf_tmp, [-1, batch_size, word_embedding_dim])
+inputs_list = tf.reshape(tf_tmp, [-1, max_sequence_num, word_embedding_dim])
 print (inputs_list)
 # st = tf.split(cell_input, num_or_size_splits=max_sequence_length, axis=1)
 # for s in st:
@@ -108,11 +108,14 @@ print(word_embedding_size, word_embedding_dim)
 
 #----------------------Run session--------------------------
 
+train_size = len(train_set)
+test_size = len(test_set)
+
 sess.run(init)
 for i in range(epoch_size):
-	sess.run(train_op, feed_dict={tf_input: train_set, tf_target: train_lb})
+	sess.run(train_op, feed_dict={tf_input: train_set[i%train_size], tf_target: train_lb[i%train_size]})
 	pass
 	if i % check_size == 0:
-		print ("epoch_size:", i, sess.run([accuracy], feed_dict={tf_input: test_set, tf_target: test_lb}))
+		print ("epoch_size:", i, sess.run([accuracy], feed_dict={tf_input: test_set[i%test_size], tf_target: test_lb[i%test_size]}))
 
 
